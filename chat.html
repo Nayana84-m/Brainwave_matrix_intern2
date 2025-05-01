@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Chat - Chat App</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #667eea, #764ba2);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .chat-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 20px;
+    }
+
+    .message {
+      background-color: #ffffff;
+      padding: 10px;
+      border-radius: 10px;
+      margin: 5px 0;
+      max-width: 70%;
+      align-self: flex-start;
+    }
+
+    .message.sent {
+      background-color: #667eea;
+      color: white;
+      align-self: flex-end;
+    }
+
+    .input-container {
+      display: flex;
+      padding: 10px;
+      background-color: white;
+    }
+
+    .input-container input {
+      flex: 1;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+    }
+
+    .input-container button {
+      padding: 10px;
+      margin-left: 10px;
+      background-color: #667eea;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    .input-container button:hover {
+      background-color: #5a67d8;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container" id="chat-container"></div>
+  <div class="input-container">
+    <input type="text" id="messageInput" placeholder="Type a message" />
+    <button id="sendBtn">Send</button>
+  </div>
+  <script type="module">
+    import { auth, db } from './firebase.js';
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { collection, addDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const chatContainer = document.getElementById("chat-container");
+    const messageInput = document.getElementById("messageInput");
+    const sendBtn = document.getElementById("sendBtn");
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        const messagesRef = collection(db, "messages");
+        const q = query(messagesRef, orderBy("timestamp"));
+
+        onSnapshot(q, (querySnapshot) => {
+          chatContainer.innerHTML = "";
+          querySnapshot.forEach((doc) => {
+            const messageData = doc.data();
+            const messageElement = document.createElement("div");
+            messageElement.classList.add("message");
+            if (messageData.userId === user.uid) {
+              messageElement.classList.add("sent");
+            }
+            messageElement.textContent = messageData.text;
+            chatContainer.appendChild(messageElement);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+          });
+        });
+
+        sendBtn.addEventListener("click", async () => {
+          const message = messageInput.value.trim();
+          if (message) {
+            try {
+              await addDoc(messagesRef, {
+                text: message,
+                userId: user.uid,
+                timestamp: new Date(),
+              });
+              messageInput.value = "";
+            } catch (error) {
+              alert("Error sending message: " + error.message);
+            }
+          }
+        });
+      } else {
+        alert("You need to log in first.");
+        window.location.href = "index.html";
+      }
+    });
+  </script>
+</body>
+</html>
