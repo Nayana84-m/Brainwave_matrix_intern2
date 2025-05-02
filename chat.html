@@ -3,124 +3,146 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Chat - Chat App</title>
+  <title>Chat</title>
   <style>
     body {
       margin: 0;
-      padding: 0;
       font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(to right, #667eea, #764ba2);
-      height: 100vh;
+      background: #f2f2f2;
       display: flex;
       flex-direction: column;
+      height: 100vh;
     }
 
-    .chat-container {
+    .header {
+      background: #667eea;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .messages {
       flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
       display: flex;
       flex-direction: column;
-      justify-content: flex-end;
-      padding: 20px;
     }
 
     .message {
-      background-color: #ffffff;
-      padding: 10px;
+      max-width: 60%;
+      margin-bottom: 0.5rem;
+      padding: 0.5rem 1rem;
       border-radius: 10px;
-      margin: 5px 0;
-      max-width: 70%;
-      align-self: flex-start;
     }
 
-    .message.sent {
+    .sent {
+      align-self: flex-end;
       background-color: #667eea;
       color: white;
-      align-self: flex-end;
+    }
+
+    .received {
+      align-self: flex-start;
+      background-color: #e5e5ea;
+      color: black;
     }
 
     .input-container {
       display: flex;
-      padding: 10px;
-      background-color: white;
+      padding: 1rem;
+      background: white;
     }
 
-    .input-container input {
+    input {
       flex: 1;
-      padding: 10px;
-      border-radius: 10px;
-      border: 1px solid #ccc;
+      padding: 0.75rem;
       font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 10px;
     }
 
-    .input-container button {
-      padding: 10px;
+    button {
       margin-left: 10px;
+      padding: 0.75rem 1rem;
       background-color: #667eea;
       color: white;
       border: none;
       border-radius: 10px;
       cursor: pointer;
     }
-
-    .input-container button:hover {
-      background-color: #5a67d8;
-    }
   </style>
 </head>
 <body>
-  <div class="chat-container" id="chat-container"></div>
+  <div class="header" id="chatHeader">Chat</div>
+  <div class="messages" id="messages"></div>
   <div class="input-container">
-    <input type="text" id="messageInput" placeholder="Type a message" />
+    <input type="text" id="messageInput" placeholder="Type a message..."/>
     <button id="sendBtn">Send</button>
   </div>
+
   <script type="module">
     import { auth, db } from './firebase.js';
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { collection, addDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import {
+      collection, addDoc, query, orderBy, onSnapshot, where, doc, getDoc
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    const chatContainer = document.getElementById("chat-container");
-    const messageInput = document.getElementById("messageInput");
+    const messagesDiv = document.getElementById("messages");
     const sendBtn = document.getElementById("sendBtn");
+    const messageInput = document.getElementById("messageInput");
+    const chatHeader = document.getElementById("chatHeader");
 
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        const messagesRef = collection(db, "messages");
-        const q = query(messagesRef, orderBy("timestamp"));
+    const urlParams = new URLSearchParams(window.location.search);
+    const recipientUid = urlParams.get("uid");
 
-        onSnapshot(q, (querySnapshot) => {
-          chatContainer.innerHTML = "";
-          querySnapshot.forEach((doc) => {
-            const messageData = doc.data();
-            const messageElement = document.createElement("div");
-            messageElement.classList.add("message");
-            if (messageData.userId === user.uid) {
-              messageElement.classList.add("sent");
-            }
-            messageElement.textContent = messageData.text;
-            chatContainer.appendChild(messageElement);
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-          });
-        });
+    let currentUser;
 
-        sendBtn.addEventListener("click", async () => {
-          const message = messageInput.value.trim();
-          if (message) {
-            try {
-              await addDoc(messagesRef, {
-                text: message,
-                userId: user.uid,
-                timestamp: new Date(),
-              });
-              messageInput.value = "";
-            } catch (error) {
-              alert("Error sending message: " + error.message);
-            }
-          }
-        });
-      } else {
-        alert("You need to log in first.");
-        window.location.href = "index.html";
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = "chats.html";
+        return;
       }
+      currentUser = user;
+
+      // Get recipient user info
+      const userDoc = await getDoc(doc(db, "users", recipientUid));
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        chatHeader.innerText = data.username || data.email;
+      }
+
+      // Create a unique chat ID by sorting both UIDs
+      const chatId = [user.uid, recipientUid].sort().join("_");
+
+      const messagesRef = collection(db, "chats", chatId, "messages");
+      const q = query(messagesRef, orderBy("timestamp"));
+      onSnapshot(q, (snapshot) => {
+        messagesDiv.innerHTML = "";
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const div = document.createElement("div");
+          div.className = "message " + (data.sender === user.uid ? "sent" : "received");
+          div.innerText = data.text;
+          messagesDiv.appendChild(div);
+        });
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      });
+
+      sendBtn.onclick = async () => {
+        const text = messageInput.value.trim();
+        if (!text) return;
+
+        await addDoc(collection(db, "chats", chatId, "messages"), {
+          text: text,
+          sender: user.uid,
+          receiver: recipientUid,
+          timestamp: new Date()
+        });
+
+        messageInput.value = "";
+      };
     });
   </script>
 </body>

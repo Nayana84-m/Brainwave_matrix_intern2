@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Chats - Chat App</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #667eea, #764ba2);
+      color: white;
+    }
+
+    .header {
+      padding: 1rem;
+      text-align: center;
+      font-size: 1.5rem;
+      background: rgba(0,0,0,0.1);
+    }
+
+    .contact-list {
+      display: flex;
+      flex-direction: column;
+      padding: 1rem;
+    }
+
+    .contact {
+      background: white;
+      color: black;
+      border-radius: 10px;
+      padding: 1rem;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+
+    .contact:hover {
+      transform: scale(1.01);
+    }
+
+    .initial {
+      background-color: #667eea;
+      color: white;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 1.2rem;
+      margin-right: 1rem;
+    }
+
+    .email {
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">Your Chats</div>
+  <div class="contact-list" id="contactList"></div>
+
+  <script type="module">
+    import { auth, db } from './firebase.js';
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const contactList = document.getElementById("contactList");
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = "index.html";
+        return;
+      }
+
+      const usersRef = collection(db, "users");
+      const snapshot = await getDocs(usersRef);
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.uid !== user.uid) {
+          const contact = document.createElement("div");
+          contact.className = "contact";
+          contact.innerHTML = `
+            <div class="initial">${data.email.charAt(0).toUpperCase()}</div>
+            <div class="email">${data.email}</div>
+          `;
+          contact.onclick = () => {
+            window.location.href = `chat.html?uid=${data.uid}`;
+          };
+          contactList.appendChild(contact);
+        }
+      });
+    });
+  </script>
+</body>
+</html>
