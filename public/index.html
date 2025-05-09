@@ -65,28 +65,36 @@
   </div>
 
   <script type="module">
-    import { auth, db } from './firebase.js';
-    import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+  import { auth, db } from './firebase.js';
+  import {
+    signInWithEmailAndPassword,
+    setPersistence,
+    browserLocalPersistence
+  } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
-    const loginBtn = document.getElementById("loginBtn");
+  const loginBtn = document.getElementById("loginBtn");
 
-    loginBtn.addEventListener("click", () => {
-      const email = document.getElementById("email").value.trim();
-      const password = document.getElementById("password").value.trim();
+  loginBtn.addEventListener("click", () => {
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value.trim();
 
-      if (!email || !password) {
-        alert("Please enter both email and password.");
-        return;
-      }
+    if (!email || !password) {
+      alert("Please enter both email and password.");
+      return;
+    }
 
-      signInWithEmailAndPassword(auth, email, password)
-        .then(() => {
-          alert("Login successful!");
-          window.location.href = "chats.html";
-        })
-        .catch((error) => {
-          alert("Login failed: " + error.message);
-        });
+    
+    setPersistence(auth, browserLocalPersistence)
+      .then(() => {
+        return signInWithEmailAndPassword(auth, email, password);
+      })
+      .then(() => {
+        alert("Login successful!");
+        window.location.href = "chats.html";
+      })
+      .catch((error) => {
+        alert("Login failed: " + error.message);
+      });
     });
   </script>
 </body>
