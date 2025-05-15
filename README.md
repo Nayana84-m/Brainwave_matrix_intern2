@@ -70,5 +70,5 @@ Firebase Hosting
 5. Messages are updated in real-time.
 
 
-🤝 Author
+## 🤝 Author
 Created by Nayana M as part of a cloud computing internship project.
