@@ -69,6 +69,9 @@ Firebase Hosting
 
 5. Messages are updated in real-time.
 
+## Project demo: 🔗
+https://chat-app-4d69f.web.app
+
 
 ## 🤝 Author
 Created by Nayana M as part of a cloud computing internship project.
